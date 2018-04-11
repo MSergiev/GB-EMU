@@ -13,11 +13,11 @@
 #define BG2     0x9C00
 #define BG_LEN  1024
 
-#define TLS1    0x8800
-#define TLS2    0x8000
+#define TLS1    0x8000
+#define TLS2    0x8800
 #define TLS_LEN 4096
 
-static const BYTE PAL[] = { 0, 6, 3, 1 };
+static const BYTE PAL[] = { 0, 6, 3, 8 };
 
 class DISPLAY {
     
@@ -29,7 +29,10 @@ private:
     
     WORD cX, cY;
     
-    BP CSL, SCRX, SCRY;
+    BP CSL, SCX, SCY;
+    
+    BYTE BG[65536];
+    unsigned CURSOR;
     
     bool HBLANK, VBLANK;
     
@@ -38,8 +41,8 @@ public:
     // Constructor
     DISPLAY() {
         CSL = &MEM[0xFF44];
-        SCRX = &MEM[0xFF42];
-        SCRY = &MEM[0xFF43];
+        SCX = &MEM[0xFF43];
+        SCY = &MEM[0xFF42];
     }
     
     // Destuctor
@@ -65,20 +68,71 @@ public:
         BGLoc = ( GB(&MEM[LCDC], 3) ? BG2 : BG1 );
         TSLoc = ( GB(&MEM[LCDC], 4) ? TLS1 : TLS2 );
         
-        drawBG();
+        setBG();
+        
+        for( int y = 0; y < 144; ++y ) {
+            for( int x = 0; x < 160; ++x ) {
+                unsigned idx = (y+(*SCY))*256 + (x+(*SCX));
+                tdraw.drawPixel( x, y, PAL[BG[idx]] );
+            }
+        }
+        
+//         for( int y = 0; y < 256; ++y ) {
+//             for( int x = 0; x < 256; ++x ) {
+//                 tdraw.drawPixel( x, y, (BG[y*256+x]?0:8) );
+//             }
+//         }
+        
+        char status[16];
+        memset( status, 0, sizeof(status) );
+        sprintf( status, "%d", CYCLES );
+        tdraw.Status2( status );
+        
         tdraw.draw();
         
     }
     
 private:
     
+    inline void setBG() {
+        memset( BG, 0, sizeof(BG) );
+        CURSOR = 0;
+        bool sgn = ( TSLoc == TLS2 );
+        
+        for( WORD h = 0; h < 32; ++h ) {
+            for( BYTE l = 0; l < 8; ++l ) {
+                for( WORD t = 0; t < 32; ++t ) {
+                    if( sgn ) {
+                        setTileLine( *((SBP)(&MEM[BGLoc+t+32*h])), l );
+                    } else {
+                        setTileLine( MEM[BGLoc+t+32*h], l );
+                    }
+                }
+            }
+        }
+    }
+    
+    inline void setTileLine( int id, WORD line ) {
+        for( WORD i = 0; i < 8; ++i ) {
+            setTilePixel( id, line, i );
+        }
+    }    
+    
+    inline void setTilePixel( int id, WORD line, WORD pix ) {
+        unsigned idx = TSLoc+(id*16)+line*2;
+        BG[CURSOR] = getColor(GB(&MEM[idx+1],7-pix)<<1 | GB(&MEM[idx],7-pix));
+        CURSOR++;
+    }
+    
+    inline BYTE getColor( BYTE idx ) {
+        return ( GB(&MEM[0xFF47], idx*2+1)<<1 | GB(&MEM[0xFF47], idx*2 ));
+    }
+    
     // Draw background layer
     inline void drawBG() {
         
         for( BYTE i = 0; i < 0x29; ++i ) {
-//             for( BYTE j = 0; j < 32; ++j ) {
-                drawTile( i/*0x8280+i*/ );
-//             }
+            drawTile( 19 );
         }
         
     }

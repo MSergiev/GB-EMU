@@ -153,9 +153,9 @@ void TDraw::drawPixel ( int x, int y, char color ) {
 
 #ifdef ASCII_MODE
 	if( y%2==0 ) {
-		screen[id] = ( screen[id]=='.' ? ':' : '\'' );
+		screen[id] = ( screen[id]=='.' ? '@' : '^' );
 	} else {
-		screen[id] = ( screen[id]=='\'' ? ':' : '.' );
+		screen[id] = ( screen[id]=='^' ? '@' : '.' );
 	}
 #elif defined ABSOLUTE_MODE
     screen[id] = 0x2588;

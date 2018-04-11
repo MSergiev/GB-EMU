@@ -58,7 +58,7 @@ inline void CFZ( BYTE a ) {
 
 // Calculate half carry flag
 inline void CFH( BYTE a, BYTE b ) {
-    SFH( ((a&0x0F + b&0x0F) > 0x0F) );
+    SFH( (((a&0xF) + (b&0xF)) > 0xF) );
 }
 
 // Calculate carry flag
@@ -93,16 +93,6 @@ inline WP WPIM() {
     return v;
 }
 
-// Get byte pointer to address in memory
-inline BP BPADDR( WORD a ) {
-    return (BP)(&MEM[MEM[a]]);
-}
-
-// Get word pointer to address in memory
-inline WP WPADDR( WORD a ) {
-    return (WP)(&MEM[MEM[a]]);
-}
-
 
 
 
@@ -122,27 +112,29 @@ inline void HALT () {
     ACT = 0;
 }
 
-inline void LD ( BP a, BP b ) { 
-    (*a) = (*b); 
+inline void LD ( BP a, BP b ) {
+    (*a) = (*b);
 }
 
 inline void LD ( WP a, WP b ) {
     (*a) = (*b); 
 }
 
-inline void LD ( WP a, BP b ) { 
+inline void LD ( WP a, BP b ) {
     (*a) = (*b); 
 }
 
-inline void LD ( BP a, WP b ) { 
+inline void LD ( BP a, WP b ) {
     (*a) = (*b); 
-    SWAP(a);
+    (*a) = (GLSN(*a)<<4)|GMSN(*a); 
 }
 
 inline void LDHL ( SBP a ) {
     WORD sp = SP+(*a);
-    *HL = sp; 
-    SFZ(0); SFN(0); SFH((SP&0x0F + *a&0x0F > 0x0F)); SFC(((int)SP+(int)*a>0xFFFF));
+    (*HL) = sp; 
+    SFZ(0); SFN(0); 
+    SFH( (SP&0xF + (*a)&0xF > 0xFFF) ); 
+    SFC( ((int)SP + (int)(*a) > 0xFFFF) );
 }
 
 inline void INC ( WP a ) { 
@@ -160,7 +152,8 @@ inline void DEC ( WP a ) {
 
 inline void DEC ( BP a ) { 
     (*a)--; 
-    CFZ(*a); SFN(1); CFH(*a,-1);
+    CFZ(*a); SFN(1); 
+    SFH( ((int)(((*a)+1)&0xF) - 1) < 0 );
 }
 
 inline void ADD ( BP a, BP b ) { 
@@ -170,10 +163,16 @@ inline void ADD ( BP a, BP b ) {
 
 inline void ADD ( WP a, WP b ) { 
     (*a) += (*b); 
+    SFN(0); 
+    SFH( (SP&0xF + (*a)&0xF > 0xFFF) ); 
+    SFC( ((int)SP + (int)(*a) > 0xFFFF) );
 }
 
 inline void ADD ( WP a, SBP b ) { 
     (*a) += (*b); 
+    SFZ(0); SFN(0); 
+    SFH( ((*a)&0xF + (*b)&0xF) > 0xF ); 
+    SFC( ((int)(*a) + (int)(*b)) > 0xFFFF );
 }
 
 inline void ADC ( BP a, BP b ) { 
@@ -184,13 +183,17 @@ inline void ADC ( BP a, BP b ) {
 
 inline void SUB ( BP a, BP b ) { 
     (*a) -= (*b); 
-    CFZ(*a); SFN(1); CFH(*a,*b); CFC(*a,*b);
+    CFZ(*a); SFN(1);
+    SFH( ((((int)(*a))&0xF) - ((int)(*b)&0xF)) < 0 );
+    SFC( ((((int)(*a))&0xFF) - ((int)(*b)&0xFF)) < 0 );
 }
 
 inline void SBC ( BP a, BP b ) { 
     SUB( a, b );
     (*a) -= GFC(); 
-    CFZ(*a); SFN(1); CFH(*a,*b); CFC(*a,*b);
+    CFZ(*a); SFN(1); 
+    SFH( ((((int)(*a))&0xF) - (((int)(*b))&0xF)) < 0 );
+    SFC( ((((int)(*a))&0xFF) - (((int)(*b))&0xFF)) < 0 );
 }
 
 inline void RLC ( BP a ) {
@@ -203,7 +206,8 @@ inline void RL ( BP a ) {
     bool c = GFC();
     SFC((((*a)&128)>>7));
     (*a) = ((*a)<<1)|c;
-    CFZ(*a); SFN(0); SFH(0);
+    if( a!=A ) CFZ(*a); 
+    SFN(0); SFH(0);
 }
 
 inline void RRC ( BP a ) {
@@ -216,12 +220,14 @@ inline void RR ( BP a ) {
     bool c = GFC();
     SFC((*a)&1);
     (*a) = ((*a)>>1)|(c<<7);
-    CFZ(*a); SFN(0); SFH(0);
+    if( a!=A ) CFZ(*a); 
+    SFN(0); SFH(0);
 }
 
 inline void CP ( BP a ) { 
-    BYTE v = (*A)-(*a); 
-    CFZ(v); SFN(1); CFH(*A,*a); CFC(*A,*a);
+    SFZ((*A)==(*a)); SFN(1); 
+    SFH( ((((int)(*A))&0xF) - ((int)(*a)&0xF)) < 0 );
+    SFC( ((((int)(*A))&0xFF) - ((int)(*a)&0xFF)) < 0 );
 }
 
 inline void AND ( BP a ) { 
@@ -240,11 +246,17 @@ inline void XOR ( BP a ) {
 }
 
 inline void JR ( FLAG f, BP a ) {
-    if( f ) PC = PC + (SBYTE)(*a);
+    if( f ) {
+        PC = PC + (SBYTE)(*a);
+        CYCLES += JUMP_TRUE;
+    }
 }
 
 inline void JP ( FLAG f, WP a ) {
-    if( f ) PC = (*a);
+    if( f ) {
+        PC = (*a) - 1;
+        CYCLES += JUMP_TRUE;
+    }
 }
 
 inline void PUSH ( WP a ) {
@@ -266,16 +278,22 @@ inline void RST ( BYTE a ) {
     PC = a;
 }
 
-inline void CALL ( bool f ) { 
+inline void CALL ( FLAG f ) { 
     if( f ) {
-        PUSH( &PC );
-        memcpy( &PC, &MEM[PC+1], 2 ); 
+        WORD val = PC+3;
+        PUSH( &val );
+        memcpy( &PC, &MEM[PC+1], 2 );
+        PC--;
+        CYCLES += CALL_RET_TRUE;
     }
-    PC--;
 }   
 
-inline void RET ( bool f ) { 
-    if( f ) POP( &PC );
+inline void RET ( FLAG f ) { 
+    if( f ) {
+        POP( &PC );
+        PC--;
+        CYCLES += CALL_RET_TRUE;
+    }
 }   
 
 inline void RETI () { 
@@ -301,6 +319,7 @@ inline void DAA() {
     } else {
         CCF();
     }
+    CFZ(*A); SFH(0); CFC(*A, *A); 
 }
   
 inline void CPL() {
@@ -309,11 +328,11 @@ inline void CPL() {
 }
   
 inline void SCF() {
-    SFC(1); SFN(0); SFH(0);
+    SFN(0); SFH(0); SFC(1);
 }   
 
 inline void CCF() {
-    SFC(0); SFN(0); SFH(!GFH());
+    SFN(0); SFH(0); SFC(!GFC());
 }
 
 inline void BIT ( BYTE i, BP a ) { 
@@ -322,6 +341,7 @@ inline void BIT ( BYTE i, BP a ) {
 
 inline void SWAP ( BP a ) {
     (*a) = (GLSN(*a)<<4)|GMSN(*a); 
+    CFZ(*a); SFN(0); SFH(0); SFC(0); 
 }
 
 inline void SLA ( BP a ) {

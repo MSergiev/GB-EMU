@@ -13,8 +13,8 @@
 
 // Symbol pixel dimensions
 
-// #define ASCII_MODE
-#define ABSOLUTE_MODE
+#define ASCII_MODE
+// #define ABSOLUTE_MODE
 
 #ifdef ASCII_MODE
     #define SYM_WIDTH 1

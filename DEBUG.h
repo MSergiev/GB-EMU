@@ -47,7 +47,7 @@ private:
             }
             // Number of cycles
             case 4: {
-                if( CYCLES == debugParam ) {
+                if( CYCLES >= debugParam ) {
                     std::cout << "! ";
                     break;
                 }
@@ -79,6 +79,16 @@ private:
                     std::cout << "- Enter number of cycles: ";
                     std::cin >> std::dec >> c;
                     debugParam = CYCLES + c;
+                    debugMode = 4;
+                    break;
+                }
+                
+                // Run fixed number of frames
+                case 'A': case 'a': {
+                    unsigned c = 0;
+                    std::cout << "- Enter number of frames: ";
+                    std::cin >> std::dec >> c;
+                    debugParam = CYCLES + (c*FRAME);
                     debugMode = 4;
                     break;
                 }
@@ -227,6 +237,7 @@ private:
                     std::cout << "  C - Continue" << std::endl;
                     std::cout << "  S - Step over" << std::endl;
                     std::cout << "  F - Run fixed number of cycles" << std::endl;
+                    std::cout << "  A - Run fixed number of frames" << std::endl;
                     std::cout << "  O - Run until instruction" << std::endl;
                     std::cout << "  L - List breakpoints" << std::endl;
                     std::cout << "  B - Add breakpoint" << std::endl;
@@ -248,6 +259,62 @@ private:
                     break;
                 }
             }
+        }
+        
+    }
+    
+    inline void dumpReg() {
+        std::cout << "  LCDC = "; printHex(MEM[0xFF40]); std::cout << std::endl;
+        std::cout << "  SCL = "; printHex(MEM[0xFF44]); std::cout << std::endl;
+        std::cout << "  SCX = "; printHex(MEM[0xFF43]); std::cout << std::endl;
+        std::cout << "  SCY = "; printHex(MEM[0xFF42]); std::cout << std::endl << std::endl;
+        std::cout << "  FZ = " << GFZ();
+        std::cout << "  FN = " << GFN();
+        std::cout << "  FH = " << GFH();
+        std::cout << "  FC = " << GFC() << std::endl;
+        std::cout << "  PC = "; printHex(PC); 
+        std::cout << " ["; printHex(*(WP)(&MEM[PC])); std::cout << "]" << std::endl;
+        std::cout << "  AF = "; printHex(*AF); 
+        std::cout << " ["; printHex(*(WP)(&MEM[*AF])); std::cout << "]" << std::endl;
+        std::cout << "  BC = "; printHex(*BC); 
+        std::cout << " ["; printHex(*(WP)(&MEM[*BC])); std::cout << "]" << std::endl;
+        std::cout << "  DE = "; printHex(*DE); 
+        std::cout << " ["; printHex(*(WP)(&MEM[*DE])); std::cout << "]" << std::endl;
+        std::cout << "  HL = "; printHex(*HL); 
+        std::cout << " ["; printHex(*(WP)(&MEM[*HL])); std::cout << "]" << std::endl;
+        std::cout << "  SP = "; printHex(SP); 
+        std::cout << " ["; printHex(*(WP)(&MEM[SP])); std::cout << "]" << std::endl;
+    }
+
+    inline void parse( BP inst, bool pc = true ) {
+        
+        BYTE val[] = {*inst, 0, 0};
+        BYTE len = 0;
+        
+        if(pc) std::cout << "$ " << std::dec << CYCLES;
+        std::cout << std::hex << std::uppercase << " 0x" << std::setfill('0') << std::setw(6) << +PC;
+        bool isExt = (val[0] == 0xCB);
+        
+        if( isExt ) {
+            len = EXT_INST_LEN;
+            memcpy( val, inst, len );
+            std::cout << std::setw(13) << std::setfill(' ') << EXT_INST[val[1]];
+        } else {
+            len = INST_LEN[val[0]];
+            memcpy( val, inst, len );
+            std::cout << std::setw(13)  << std::setfill(' ')<< INST[val[0]];
+        }
+        
+        std::cout << std::hex << std::uppercase  << "   [" << std::setfill('0');
+        for( BYTE i = 0; i < len; ++i ) {
+            std::cout << std::setw(2) << +(BYTE)val[i] << (i<len-1 ? " " : "");
+        }
+        std::cout << "]   "; 
+        for( BYTE i = 0; i < (3-len); ++i ) std::cout << "   ";
+        if( verbose ) {
+            std::cout << (isExt?EXT_INST_CMNT[val[1]]:INST_CMNT[val[0]]) << std::endl;
+        } else {
+            std::cout << std::endl;
         }
         
     }

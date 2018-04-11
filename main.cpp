@@ -32,12 +32,18 @@ int main( int argc, const char* argv[] ) {
         if( !cpu.loadROM( argv[1] ) ) return -1;
     }
     
+    if( !cpu.loadROM( "bios.gb" ) ) return -1;
+    
     if( !debug ) display.init();
     
     while(1) {
         cpu.run();
-        if( !ACT ) return 0;
-        if( !debug ) display.draw();
+        if( !ACT and debug ) break;
+        if( !debug ) {
+            if( CYCLES%FRAME == 0 ) {
+                display.draw();
+            }
+        }
         
         int input = getch();
         if( input == 'q' or input == 'Q' or input == KEY_EXIT ) break;

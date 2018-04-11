@@ -33,6 +33,9 @@ typedef WORD* WP;
 #define BTW(x,y) (x<<8)|y
 #define WTB(x,y) 
 
+// Number of frames until screen is redrawn
+static unsigned FRAME = 80/*70224*/;
+
 // CPU running flag
 static FLAG ACT;
 
@@ -61,8 +64,10 @@ const WP DE = CTWP(&REG[4]);
 const WP HL = CTWP(&REG[6]);
 
 // Memory
-static BYTE MEM[65535];
+static BYTE MEM[0xFFFF];
 
+// Cycle count
+static unsigned long CYCLES = 0;
 
 // Helper functions
 
