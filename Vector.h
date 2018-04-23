@@ -15,7 +15,7 @@ inline void swap( float& a, float& b ) {
 	float tmp = a; 
 	a=b; 
 	b=tmp; 
-};
+}
 
 // Convert degrees to radians
 inline float radians( float deg ) {

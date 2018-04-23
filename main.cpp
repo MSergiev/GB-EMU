@@ -10,7 +10,6 @@ const char* filename = "rom.gb";
 int main( int argc, const char* argv[] ) {
     
     CPU cpu;
-    DISPLAY display;
 
     bool debug = false;
     
@@ -25,28 +24,37 @@ int main( int argc, const char* argv[] ) {
         }
     }   
     
-    if( argc < 2 ) {
-        if( !cpu.loadROM( filename ) ) return -1;
-    }
-    else {
+    if( argc >= 2 ) {
         if( !cpu.loadROM( argv[1] ) ) return -1;
     }
     
     if( !cpu.loadROM( "bios.gb" ) ) return -1;
     
+    DISPLAY display;
+    
+    // Memory fixes
+//     memcpy( &MEM[0x104], &MEM[0x00A8], 48 );
+//     MEM[0xFF44] = 144;
+//     memset( &MEM[0x134], 0, (0x14D-0x134) );
+//     MEM[0xFF44] = 0xE7;
+    
     if( !debug ) display.init();
     
-    while(1) {
-        cpu.run();
+    ACT = true;
+    
+    while(1) {   
         if( !ACT and debug ) break;
+          
+        
         if( !debug ) {
-            if( CYCLES%FRAME == 0 ) {
-                display.draw();
-            }
+            display.draw();
+            
+            int input = getch();
+            if( input == 'q' or input == 'Q' or input == KEY_EXIT ) break;
         }
         
-        int input = getch();
-        if( input == 'q' or input == 'Q' or input == KEY_EXIT ) break;
+        cpu.run();
+        
     }
     
     if( !debug ) display.deinit();

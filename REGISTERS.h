@@ -1,6 +1,8 @@
 #ifndef REGISTERS_H
 #define REGISTERS_H
 
+#include <vector>
+
 // 8-bit architecture
 #define ARCH 8
 // Clock speed
@@ -33,8 +35,14 @@ typedef WORD* WP;
 #define BTW(x,y) (x<<8)|y
 #define WTB(x,y) 
 
-// Number of frames until screen is redrawn
-static unsigned FRAME = 80/*70224*/;
+static const BYTE BITMASK[] = { 0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80 };
+
+// Number of cycles until screen is redrawn
+//static const unsigned FRAME = 70224;
+static const unsigned SCANLINE = 4;//456;
+static const unsigned SCANCOL = 154;//154;
+static const BYTE SCR_H = 144;
+static const BYTE SCR_W = 160;
 
 // CPU running flag
 static FLAG ACT;
@@ -43,6 +51,7 @@ static FLAG ACT;
 static FLAG ITR;
 
 // Registers
+std::vector<BYTE> SERIAL;
 static BYTE REG[8];
 static WORD PC, SP;
 static const BYTE FZ = 7, FN = 6, FH = 5, FC = 4;
@@ -64,7 +73,7 @@ const WP DE = CTWP(&REG[4]);
 const WP HL = CTWP(&REG[6]);
 
 // Memory
-static BYTE MEM[0xFFFF];
+static BP MEM = nullptr;
 
 // Cycle count
 static unsigned long CYCLES = 0;
@@ -87,8 +96,9 @@ static inline void SB( BP a, BYTE i, bool v ) {
 }
 
 // Get bit
-static inline bool GB( BP a, BYTE i ) { 
-    return (1 & ((*a)>>i)); 
+static inline bool GB( BP a, BYTE i ) {
+    return (*a)&BITMASK[i];
+//     return (1 & ((*a)>>i)); 
 }
 
 // Get most significant nibble

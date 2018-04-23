@@ -12,7 +12,7 @@
     
 public:
     
-    inline bool enableDebug() {
+    bool enableDebug() {
         debugging = true;
         debugMode = 1;        
         return true;
@@ -20,7 +20,7 @@ public:
     
 private:
     
-    inline void debug() {
+    void debug() {
         
         switch( debugMode ) {
             // Continuous
@@ -88,7 +88,7 @@ private:
                     unsigned c = 0;
                     std::cout << "- Enter number of frames: ";
                     std::cin >> std::dec >> c;
-                    debugParam = CYCLES + (c*FRAME);
+                    debugParam = CYCLES + (c*SCANLINE*SCANCOL);
                     debugMode = 4;
                     break;
                 }
@@ -201,6 +201,17 @@ private:
                     break;
                 }   
                 
+                // Serial buffer
+                case 'N': case 'n': {
+                    std::cout << "- Serial buffer:" << std::endl;
+                    for( unsigned i = 0; i < SERIAL.size(); ++i ) {
+                        std::cout << SERIAL[i];
+                    }
+                    std::cout << std::endl;
+                    sel = 0;
+                    break;
+                }   
+                
                 // Dump memory to file
                 case 'X': case 'x': {
                     std::ofstream file( "mem.txt" );
@@ -246,6 +257,7 @@ private:
                     std::cout << "  T - Preview tile" << std::endl;
                     std::cout << "  P - Preview graphics" << std::endl;
                     std::cout << "  M - Read data from memory" << std::endl;
+                    std::cout << "  N - Print serial buffer" << std::endl;
                     std::cout << "  X - Dump memory to file" << std::endl;
                     std::cout << "  V - Verbose mode" << std::endl;
                     std::cout << "  Q - Quit" << std::endl;
@@ -263,7 +275,7 @@ private:
         
     }
     
-    inline void dumpReg() {
+    void dumpReg() {
         std::cout << "  LCDC = "; printHex(MEM[0xFF40]); std::cout << std::endl;
         std::cout << "  SCL = "; printHex(MEM[0xFF44]); std::cout << std::endl;
         std::cout << "  SCX = "; printHex(MEM[0xFF43]); std::cout << std::endl;
@@ -286,7 +298,7 @@ private:
         std::cout << " ["; printHex(*(WP)(&MEM[SP])); std::cout << "]" << std::endl;
     }
 
-    inline void parse( BP inst, bool pc = true ) {
+    void parse( BP inst, bool pc = true ) {
         
         BYTE val[] = {*inst, 0, 0};
         BYTE len = 0;
@@ -319,7 +331,7 @@ private:
         
     }
     
-    inline void preview() {
+    void preview() {
         
         WORD SCX = MEM[0xFF43];
         WORD SCY = MEM[0xFF42];
@@ -347,7 +359,7 @@ private:
         
     }
     
-    inline void setBG() {
+    void setBG() {
         memset( BG, 0, sizeof(BG) );
         CURSOR = 0;
         
@@ -371,25 +383,23 @@ private:
 //         }
 //     }
     
-    inline void printTileLine( WORD id, WORD line ) {
-        WORD SCX = MEM[0xFF43];
-        WORD SCY = MEM[0xFF42];
+    void printTileLine( WORD id, WORD line ) {
         for( WORD i = 0; i < 8; ++i ) {
             printTilePixel( id, line, i );
         }
     }  
     
-    inline void setTileLine( WORD id, WORD line ) {
+    void setTileLine( WORD id, WORD line ) {
         for( WORD i = 0; i < 8; ++i ) {
             setTilePixel( id, line, i );
         }
     }    
     
-    inline void printTilePixel( WORD id, WORD line, WORD pix ) {
+    void printTilePixel( WORD id, WORD line, WORD pix ) {
         std::cout << (GB(&MEM[0x8000+(id*16)+line*2],7-pix) ? '1': ' ');
     }   
     
-    inline void setTilePixel( WORD id, WORD line, WORD pix ) {
+    void setTilePixel( WORD id, WORD line, WORD pix ) {
         BG[CURSOR] = GB(&MEM[0x8000+(id*16)+line*2],7-pix);
         CURSOR++;
     }
@@ -398,7 +408,7 @@ private:
 //         printTilePixel();
 //     }
     
-    inline void printTile( WORD id ) {
+    void printTile( WORD id ) {
         for( WORD i = 0; i < 8; ++i ) {
             printTileLine( id, i );
             std::cout << std::endl;

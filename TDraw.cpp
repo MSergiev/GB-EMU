@@ -87,13 +87,18 @@ void TDraw::drawPolygon ( int* x, int* y, int sides, char color ) {
 }
 
 void TDraw::drawRegPoly ( int x, int y, int rad, int sides, double rot, char color ) {
-	int polyX[sides], polyY[sides];
+	int* polyX = new int[sides];
+    int* polyY = new int[sides];
+    
 	for( int i = 0; i < sides; ++i ) {
 		polyX[i] = x + rad*cos( ((float)i/sides)*(2*M_PI) + 3*M_PI/2 + rot);
 		polyY[i] = y + rad*sin( ((float)i/sides)*(2*M_PI) + 3*M_PI/2 + rot);
 	}
 
 	drawPolygon(polyX, polyY, sides, color);
+    
+    delete[] polyX;
+    delete[] polyY;
 }
 
 void TDraw::drawRect ( int x, int y, int w, int h, char color ) {
@@ -152,13 +157,25 @@ void TDraw::drawPixel ( int x, int y, char color ) {
 	int id = x/SYM_WIDTH + (y/SYM_HEIGHT)*width;
 
 #ifdef ASCII_MODE
-	if( y%2==0 ) {
-		screen[id] = ( screen[id]=='.' ? '@' : '^' );
-	} else {
-		screen[id] = ( screen[id]=='^' ? '@' : '.' );
-	}
-#elif defined ABSOLUTE_MODE
-    screen[id] = 0x2588;
+    #ifdef ABSOLUTE_MODE
+        screen[id] = '@';
+    #else	
+        if( y%2==0 ) {
+            screen[id] = ( screen[id]=='.' ? '@' : '^' );
+        } else {
+            screen[id] = ( screen[id]=='^' ? '@' : '.' );
+        }
+    #endif
+#elif defined ANSI_MODE    
+    #ifdef ABSOLUTE_MODE
+        screen[id] = 0x2588;
+    #else	
+        if( y%2==0 ) {
+            screen[id] = ( screen[id]==0x2584 ? 0x2588 : 0x2580 );
+        } else {
+            screen[id] = ( screen[id]==0x2580 ? 0x2588 : 0x2584 );
+        }
+    #endif
 #else
 	screen[id] |= PIXEL_MATRIX[y%SYM_HEIGHT][x%SYM_WIDTH];
 #endif

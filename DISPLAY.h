@@ -34,8 +34,6 @@ private:
     BYTE BG[65536];
     unsigned CURSOR;
     
-    bool HBLANK, VBLANK;
-    
 public:
     
     // Constructor
@@ -60,41 +58,42 @@ public:
     }
     
     // Draw method
-    inline void draw() {
+    void draw() {
         
-        HBLANK = false;
-        VBLANK = false;
-        cX = 0; cY = 0;
-        BGLoc = ( GB(&MEM[LCDC], 3) ? BG2 : BG1 );
-        TSLoc = ( GB(&MEM[LCDC], 4) ? TLS1 : TLS2 );
-        
-        setBG();
-        
-        for( int y = 0; y < 144; ++y ) {
-            for( int x = 0; x < 160; ++x ) {
-                unsigned idx = (y+(*SCY))*256 + (x+(*SCX));
-                tdraw.drawPixel( x, y, PAL[BG[idx]] );
+        if( *CSL == SCR_H ) {
+            
+            cX = 0; cY = 0;
+            BGLoc = ( GB(&MEM[LCDC], 3) ? BG2 : BG1 );
+            TSLoc = ( GB(&MEM[LCDC], 4) ? TLS1 : TLS2 );
+            
+            setBG();
+            
+            for( BYTE y = 0; y < SCR_H; ++y ) {
+                for( BYTE x = 0; x < SCR_W; ++x ) {
+                    WORD idx = (y+(*SCY))*256 + (x+(*SCX));
+                    tdraw.drawPixel( x, y, PAL[BG[idx]] );
+                }
             }
+            
+            char status[16];
+            
+            memset( status, 0, sizeof(status) );
+            sprintf( status, "%lu", CYCLES );
+            tdraw.Status1( status );
+            
+            memset( status, 0, sizeof(status) );
+            sprintf( status, "%d", MEM[PC] );
+            tdraw.Status2( status );
+            
+            tdraw.draw();
+            
         }
-        
-//         for( int y = 0; y < 256; ++y ) {
-//             for( int x = 0; x < 256; ++x ) {
-//                 tdraw.drawPixel( x, y, (BG[y*256+x]?0:8) );
-//             }
-//         }
-        
-        char status[16];
-        memset( status, 0, sizeof(status) );
-        sprintf( status, "%d", CYCLES );
-        tdraw.Status2( status );
-        
-        tdraw.draw();
         
     }
     
 private:
     
-    inline void setBG() {
+    void setBG() {
         memset( BG, 0, sizeof(BG) );
         CURSOR = 0;
         bool sgn = ( TSLoc == TLS2 );
@@ -112,19 +111,19 @@ private:
         }
     }
     
-    inline void setTileLine( int id, WORD line ) {
+    void setTileLine( int id, WORD line ) {
         for( WORD i = 0; i < 8; ++i ) {
             setTilePixel( id, line, i );
         }
     }    
     
-    inline void setTilePixel( int id, WORD line, WORD pix ) {
+    void setTilePixel( int id, WORD line, WORD pix ) {
         unsigned idx = TSLoc+(id*16)+line*2;
         BG[CURSOR] = getColor(GB(&MEM[idx+1],7-pix)<<1 | GB(&MEM[idx],7-pix));
         CURSOR++;
     }
     
-    inline BYTE getColor( BYTE idx ) {
+    BYTE getColor( BYTE idx ) {
         return ( GB(&MEM[0xFF47], idx*2+1)<<1 | GB(&MEM[0xFF47], idx*2 ));
     }
     
@@ -137,10 +136,11 @@ private:
         
     }
     
-    inline void drawTile( WORD idx ) {
-        for( BYTE i = 0; i < 8; ++i ) {
-            for( BYTE j = 0; j < 8; ++j ) {
-                tdraw.drawPixel( cX+j, cY+i, PAL[pix(idx+i,j*2)] );
+    void drawTile( WORD idx ) {
+        for( BYTE y = 0; y < 8; ++y ) {
+            for( BYTE x = 0; x < 8; ++x ) {
+                unsigned idx = (y+(*SCY))*256 + (x+(*SCX));
+                tdraw.drawPixel( cX+x, cY+y, PAL[BG[idx]] );
             }
         }
         updateCursor();
@@ -153,11 +153,9 @@ private:
     inline void updateCursor() {
         cX+=8;
         if(cX > W) {
-            HBLANK = true;
             cX = 0;
             cY+=8;
             if( cY > H ) {
-                VBLANK = true;
                 cY = 0;
             }
         }

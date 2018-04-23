@@ -3,7 +3,7 @@
 
 #include "OPERATIONS.h"
   
-inline void processExt( BYTE inst ) {
+void processExt( BYTE inst ) {
     
     // Instruction handling
     switch( inst ) {

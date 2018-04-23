@@ -3,7 +3,7 @@
 
 #include "EXT_INSTRUCTIONS.h"
   
-inline void process( BYTE inst ) {
+void process( BYTE inst ) {
     
     // Instruction handling
     switch( inst ) {
@@ -14,7 +14,7 @@ inline void process( BYTE inst ) {
         case 0x04: INC ( B ); break;
         case 0x05: DEC ( B ); break;
         case 0x06: LD ( B, BPIM() ); break;
-        case 0x07: RLC ( A ); break;
+        case 0x07: RLCA (); break;
         case 0x08: LD ( &MEM[*WPIM()], &SP ); break;
         case 0x09: ADD ( HL, BC ); break;
         case 0x0A: LD ( A, &MEM[*BC] ); break;
@@ -22,7 +22,7 @@ inline void process( BYTE inst ) {
         case 0x0C: INC ( C ); break;
         case 0x0D: DEC ( C ); break;
         case 0x0E: LD ( C, BPIM() ); break;
-        case 0x0F: RRC ( A ); break;
+        case 0x0F: RRCA (); break;
         
         case 0x10: STOP (); break;
         case 0x11: LD ( DE, WPIM() ); break;
@@ -31,7 +31,7 @@ inline void process( BYTE inst ) {
         case 0x14: INC ( D ); break;
         case 0x15: DEC ( D ); break;
         case 0x16: LD ( D, BPIM() ); break;
-        case 0x17: RL ( A ); break;
+        case 0x17: RLA (); break;
         case 0x18: JR ( 1, BPIM() ); break;
         case 0x19: ADD ( HL, DE ); break;
         case 0x1A: LD ( A, &MEM[*DE] ); break;
@@ -39,7 +39,7 @@ inline void process( BYTE inst ) {
         case 0x1C: INC ( E ); break;
         case 0x1D: DEC ( E ); break;
         case 0x1E: LD ( E, BPIM() ); break;
-        case 0x1F: RR ( A ); break;
+        case 0x1F: RRA (); break;
         
         case 0x20: JR ( !GFZ(), BPIM() ); break;
         case 0x21: LD ( HL, WPIM() ); break;
@@ -286,7 +286,7 @@ inline void process( BYTE inst ) {
     CYCLES += INST_CYCLES[inst];
 }
 
-inline void ERR() {
+void ERR() {
     std::cerr << "-----------------------------------------------" << std::endl;
     std::cerr << "----------- UNSUPPORTED INSTRUCTION -----------" << std::endl;
     std::cerr << "-----------------------------------------------" << std::endl;

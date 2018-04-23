@@ -1,2 +1,2 @@
 run: *.cpp *.h 
-	g++ -o run *.cpp -lncursesw
+	g++ -Wall -pedantic -ggdb -O3 -o run *.cpp -lncursesw

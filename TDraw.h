@@ -13,15 +13,20 @@
 
 // Symbol pixel dimensions
 
-#define ASCII_MODE
+// #define ASCII_MODE
+#define ANSI_MODE
+
 // #define ABSOLUTE_MODE
 
-#ifdef ASCII_MODE
-    #define SYM_WIDTH 1
-    #define SYM_HEIGHT 2
-#elif defined ABSOLUTE_MODE
+#ifdef ABSOLUTE_MODE
     #define SYM_WIDTH 1
     #define SYM_HEIGHT 1
+#elif defined ASCII_MODE
+    #define SYM_WIDTH 1
+    #define SYM_HEIGHT 2
+#elif defined ANSI_MODE
+    #define SYM_WIDTH 1
+    #define SYM_HEIGHT 2
 #else
     #define SYM_WIDTH 2
     #define SYM_HEIGHT 4

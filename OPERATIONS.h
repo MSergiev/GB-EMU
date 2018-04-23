@@ -2,6 +2,7 @@
 #define OPERATIONS_H
 
 #include <fstream>
+#include <cstring>
 // #include "REGISTERS.h"
 
 
@@ -130,97 +131,131 @@ inline void LD ( BP a, WP b ) {
 }
 
 inline void LDHL ( SBP a ) {
-    WORD sp = SP+(*a);
-    (*HL) = sp; 
+    int sp = SP;
+    (*HL) = sp + (*a); 
     SFZ(0); SFN(0); 
-    SFH( (SP&0xF + (*a)&0xF > 0xFFF) ); 
-    SFC( ((int)SP + (int)(*a) > 0xFFFF) );
+    SFH( (((sp&0xFFF) + ((*a)&0xFFF)) > 0xFFF) ); 
+    SFC( ((int)sp + (int)(*a) > 0xFFFF) );
 }
 
 inline void INC ( WP a ) { 
     (*a)++; 
 }
 
-inline void INC ( BP a ) { 
+inline void INC ( BP a ) {
+    CFH(*a,1);
     (*a)++; 
-    CFZ(*a); SFN(0); CFH(*a,1);
+    CFZ(*a); SFN(0); 
 }
 
-inline void DEC ( WP a ) { 
+inline void DEC ( WP a ) {
     (*a)--; 
 }
 
-inline void DEC ( BP a ) { 
+inline void DEC ( BP a ) {
+    SFH( ((int)((*a)&0xF) - 1) < 0 );
     (*a)--; 
     CFZ(*a); SFN(1); 
-    SFH( ((int)(((*a)+1)&0xF) - 1) < 0 );
 }
 
-inline void ADD ( BP a, BP b ) { 
+inline void ADD ( BP a, BP b ) {
+    BYTE v = (*a);
     (*a) += (*b); 
-    CFZ(*a); SFN(0); CFH(*a,*b); CFC(*a,*b);
+    CFZ(*a); SFN(0); CFH(v,*b); CFC(v,*b);
 }
 
-inline void ADD ( WP a, WP b ) { 
-    (*a) += (*b); 
+inline void ADD ( WP a, WP b ) {
     SFN(0); 
-    SFH( (SP&0xF + (*a)&0xF > 0xFFF) ); 
-    SFC( ((int)SP + (int)(*a) > 0xFFFF) );
+    SFH( ((((*a)&0xFFF) + ((*b)&0xFFF)) > 0xFFF) ); 
+    SFC( ((int)(*a) + (int)(*b) > 0xFFFF) );
+    (*a) += (*b); 
 }
 
-inline void ADD ( WP a, SBP b ) { 
+inline void ADD ( WP a, SBP b ) {
+    SFH( (((*a)&0xFFF) + ((*b)&0xFFF)) > 0xFFF ); 
+    SFC( ((int)(*a) + (int)(*b)) > 0xFFFF );
     (*a) += (*b); 
     SFZ(0); SFN(0); 
-    SFH( ((*a)&0xF + (*b)&0xF) > 0xF ); 
-    SFC( ((int)(*a) + (int)(*b)) > 0xFFFF );
 }
 
 inline void ADC ( BP a, BP b ) { 
-    ADD( a, b );
-    (*a) += GFC();
-    CFZ(*a); SFN(0); CFH(*a,*b); CFC(*a,*b);
+    BYTE l = (*a) + GFC();
+    BYTE r = (*b);
+    (*a) = l + r;
+    CFZ(*a); SFN(0); CFH(l,r); CFC(l,r);
 }
 
 inline void SUB ( BP a, BP b ) { 
+    BYTE v = *a;
     (*a) -= (*b); 
     CFZ(*a); SFN(1);
-    SFH( ((((int)(*a))&0xF) - ((int)(*b)&0xF)) < 0 );
-    SFC( ((((int)(*a))&0xFF) - ((int)(*b)&0xFF)) < 0 );
+    SFH( ((((int)v)&0xF) - ((int)(*b)&0xF)) < 0 );
+    SFC( ((((int)v)&0xFF) - ((int)(*b)&0xFF)) < 0 );
 }
 
 inline void SBC ( BP a, BP b ) { 
-    SUB( a, b );
-    (*a) -= GFC(); 
+    BYTE v = *A;
+    (*a) -= (*b) + GFC();
     CFZ(*a); SFN(1); 
-    SFH( ((((int)(*a))&0xF) - (((int)(*b))&0xF)) < 0 );
-    SFC( ((((int)(*a))&0xFF) - (((int)(*b))&0xFF)) < 0 );
+    SFH( ((((int)v)&0xF) - (((int)(*b))&0xF)) < 0 );
+    SFC( ((((int)v)&0xFF) - (((int)(*b))&0xFF)) < 0 );
+}
+
+inline void RLCA () {
+    bool c = (((*A)&128)>>7);
+    SFC(c);
+    (*A) = ((*A)<<1) | c;
+    SFZ(0); SFN(0); SFH(0); SFC(((*A)&1));
+}
+
+inline void RLA () {
+    bool c = GFC();
+    SFC((((*A)&128)>>7));
+    (*A) = ((*A)<<1) | c;
+    SFZ(0); SFN(0); SFH(0);
+}
+
+inline void RRCA () {
+    bool c = (*A)&1;
+    SFC(c);
+    (*A) = ((*A)>>1) | (c<<7);
+    SFZ(0); SFN(0); SFH(0); 
+}
+
+inline void RRA () {
+    bool c = GFC();
+    SFC((*A)&1);
+    (*A) = ((*A)>>1) | (c<<7);
+    SFZ(0); SFN(0); SFH(0);
 }
 
 inline void RLC ( BP a ) {
     SFC((((*a)&128)>>7));
     (*a) = ((*a)<<1)|FC;
-    SFZ(0); SFN(0); SFH(0); SFC(((*a)&1));
+    if( a!=A ) CFZ(*a); else SFZ(0);
+    SFN(0); SFH(0); SFC(((*a)&1));
 }
 
 inline void RL ( BP a ) {
     bool c = GFC();
     SFC((((*a)&128)>>7));
     (*a) = ((*a)<<1)|c;
-    if( a!=A ) CFZ(*a); 
+    if( a!=A ) CFZ(*a); else SFZ(0);
     SFN(0); SFH(0);
 }
 
 inline void RRC ( BP a ) {
     SFC((*a)&1);
     (*a) = ((*a)>>1)|(FC<<7);
-    SFZ(0); SFN(0); SFH(0); SFC(((*a)&128)>>8);
+    if( a!=A ) CFZ(*a); else SFZ(0);
+    SFN(0); SFH(0); SFC(((*a)&128)>>8);
 }
 
 inline void RR ( BP a ) {
     bool c = GFC();
     SFC((*a)&1);
     (*a) = ((*a)>>1)|(c<<7);
-    if( a!=A ) CFZ(*a); 
+    if( a!=A ) CFZ(*a); else SFZ(0);
     SFN(0); SFH(0);
 }
 
@@ -247,14 +282,16 @@ inline void XOR ( BP a ) {
 
 inline void JR ( FLAG f, BP a ) {
     if( f ) {
-        PC = PC + (SBYTE)(*a);
+        PC += (SBYTE)(*a);
+//         PC -= 1;
         CYCLES += JUMP_TRUE;
     }
 }
 
 inline void JP ( FLAG f, WP a ) {
     if( f ) {
-        PC = (*a) - 1;
+        PC = (*a);
+        PC -= 1;
         CYCLES += JUMP_TRUE;
     }
 }
@@ -294,12 +331,7 @@ inline void RET ( FLAG f ) {
         PC--;
         CYCLES += CALL_RET_TRUE;
     }
-}   
-
-inline void RETI () { 
-    EI();
-    RET( 1 );
-}
+} 
 
 inline void EI () { 
     ITR = 1;
@@ -307,24 +339,11 @@ inline void EI () {
 
 inline void DI () { 
     ITR = 0;
-}
+}  
 
-inline void DAA() {
-    if( GLSN(*A) > 9 or FH ) {
-        (*A)+=0x06;
-    }
-    if( GMSN(*A) > 9 or FC ) {
-        (*A)+=0x60;
-        SCF();
-    } else {
-        CCF();
-    }
-    CFZ(*A); SFH(0); CFC(*A, *A); 
-}
-  
-inline void CPL() {
-    (*A) = ~(*A);
-    SFH(1); SFN(1);
+inline void RETI () { 
+    EI();
+    RET( 1 );
 }
   
 inline void SCF() {
@@ -333,6 +352,32 @@ inline void SCF() {
 
 inline void CCF() {
     SFN(0); SFH(0); SFC(!GFC());
+}
+
+inline void DAA() {
+    if( !GFN() ) {  
+        if( GFC() or (*A) > 0x99) { 
+            (*A) += 0x60; 
+            SFC( 1 ); 
+        }
+        if( GFH() or ((*A) & 0x0f) > 0x09) { 
+            (*A) += 0x6; 
+        }
+    } else {
+        if( GFC() ) {
+            (*A) -= 0x60;
+        }
+        if( GFH() ) { 
+            (*A) -= 0x6;
+        }
+    }
+    
+    CFZ(*A); SFH(0);
+}
+  
+inline void CPL() {
+    (*A) = ~(*A);
+    SFH(1); SFN(1);
 }
 
 inline void BIT ( BYTE i, BP a ) { 
